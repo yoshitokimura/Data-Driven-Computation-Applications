@@ -1,5 +1,9 @@
 import numpy as np 
 import matplotlib.pyplot as plt 
+from matplotlib.animation import FuncAnimation
+import matplotlib
+matplotlib.use('TkAgg')  # macOS でアニメーション表示用
+
 Nx=20; Ny=20;
 T0 = np.zeros([Ny+1, Nx+1]); 
 T = np.zeros([Ny+1, Nx+1]);
@@ -31,11 +35,39 @@ def update_T(T,T0):
       else: 
         T[j, i] = (1.0 - 2.0*dtx2 - 2.0*dty2)*T0[j, i] + dtx2*(T0[j, i+1] + T0[j, i-1]) + dty2*(T0[j+1, i] + T0[j-1, i]); 
   return
-for itr in range(100): # time looping
+
+# Store all time steps for animation
+num_steps = 100
+T_history = np.zeros([num_steps, Ny+1, Nx+1])
+
+for itr in range(num_steps): # time looping
   update_T(T,T0)
   T0 = T.copy(); # 更新したTをT0に格納してから，次の時間反復へ 
-# plot 
-plt.contourf(xp, yp, T0, 20, cmap='viridis', vmin=0.0, vmax=1.0);
-#plt.colorbar(vmin=0, vmax=1.0)
-plt.axis('square') # axis square
-plt.xlim([0, Lx]); plt.ylim([0, Ly]); plt.show();
+  T_history[itr] = T0.copy()
+
+# Animation setup
+fig, ax = plt.subplots(figsize=(8, 8))
+contour = ax.contourf(xp, yp, T_history[0], 20, cmap='viridis', vmin=0.0, vmax=1.0)
+ax.set_aspect('equal')
+ax.set_xlim([0, Lx])
+ax.set_ylim([0, Ly])
+ax.set_xlabel('x')
+ax.set_ylabel('y')
+title = ax.set_title(f'2D Diffusion (t=0.0)')
+cbar = plt.colorbar(contour, ax=ax)
+cbar.set_label('Temperature')
+
+def animate(frame):
+    ax.clear()
+    contour = ax.contourf(xp, yp, T_history[frame], 20, cmap='viridis', vmin=0.0, vmax=1.0)
+    ax.set_aspect('equal')
+    ax.set_xlim([0, Lx])
+    ax.set_ylim([0, Ly])
+    ax.set_xlabel('x')
+    ax.set_ylabel('y')
+    time = frame * dt
+    ax.set_title(f'2D Diffusion (t={time:.4f})')
+    return [contour]
+
+anim = FuncAnimation(fig, animate, frames=num_steps, interval=100, blit=False, repeat=True)
+plt.show()
