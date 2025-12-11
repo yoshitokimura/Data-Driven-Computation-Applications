@@ -33,7 +33,7 @@ def main():
     n = x_vec.size  # 次元数 N^2
 
     # ===== 測定（ランダムサンプリング） =====
-    sampling_ratio = 0.25  # サンプリング率 25%
+    sampling_ratio = 0.3  # サンプリング率 30%（欠損率70%）
     m = int(sampling_ratio * n)  # 測定数
 
     rng = np.random.default_rng(seed=0)
@@ -71,10 +71,25 @@ def main():
     plt.imshow(img_rec, cmap="gray")
     plt.axis("off")
 
-    # 参考：同じサンプリング率で「単純な間引き + 逆DCT」してみる
+    # 参考：同じサンプリング率で「線形補間」してみる
     x_naive = np.zeros_like(x_vec)
     x_naive[idx] = y  # わかっている成分だけ埋める
-    X_dct_naive = x_naive.reshape(N, N)
+    
+    # 線形補間で欠損値を補完
+    from scipy.interpolate import griddata
+    idx_2d = np.unravel_index(idx, (N, N))
+    points = np.column_stack(idx_2d)
+    values = y
+    
+    # グリッド座標
+    grid_x, grid_y = np.meshgrid(np.arange(N), np.arange(N))
+    grid_points = np.column_stack([grid_y.ravel(), grid_x.ravel()])
+    
+    # 線形補間
+    interpolated = griddata(points, values, grid_points, method='linear', fill_value=np.mean(y))
+    x_naive_interp = interpolated.reshape(N, N)
+    
+    X_dct_naive = x_naive_interp
     img_naive = idct2(X_dct_naive)
     img_naive = np.clip(img_naive, 0, 1)
 
